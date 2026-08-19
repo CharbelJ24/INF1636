@@ -1,20 +1,18 @@
-1. Número da Questão;
-2. Texto do Enunciado;
-3. Código com a solução realizada (de todos os .c elaborados na questão);
-4. Conteúdo de arquivos de texto utilizados;
-5. Comando utilizado para compilação e execução da questão;
-6. Resultado impresso na tela;
-7. Conclusão respondendo à pergunta feita na questão. Caso não haja pergunta, deve ser explicado o
-código relacionando-o com os conteúdos aprendidos no laboratório.
+===============================================================================
+[INF1019] Lab 1 - Comunicacao entre Processos - fork() / exec()
+===============================================================================
 
-Nome: Charbel Janos Freitas
-Matricula: 2510373
 
-[Exercicio 1]
-Enunciado: Faça um programa para criar dois processos, o pai escreve seu pid e espera o filho terminar e o filho escreve o seu pid e termina.
+===============================================================================
+EXERCICIO 1
+===============================================================================
 
-Codigo:
-ex1.c:
+ENUNCIADO:
+Faca um programa para criar dois processos, o pai escreve seu pid e espera o
+filho terminar e o filho escreve o seu pid e termina.
+
+CODIGO FONTE (ex1.c):
+-------------------------------------------------------------------------------
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -43,30 +41,314 @@ int main(void) {
 
     return 0;
 }
+-------------------------------------------------------------------------------
 
-Comando utilizado para compilação e execução da questão:
-gcc -o exercicio1 exercicio1.c
-./exercicio1
+LINHA DE COMANDO PARA COMPILACAO E EXECUCAO:
+    gcc -o ex1 ex1.c
+    ./ex1
 
-Resultado impresso na tela:
-[PAI]  meu pid = 19476
-[FILHO] meu pid = 19477
+SAIDA GERADA:
+-------------------------------------------------------------------------------
+[FILHO] meu pid = 513
+[PAI]  meu pid = 512
 [PAI] FIM
+-------------------------------------------------------------------------------
 
+REFLEXAO:
+O programa cria dois processos com fork(): o pai (que recebe de volta o pid
+do filho, um numero != 0) e o filho (que recebe 0). Cada um segue o ramo do
+"if" correspondente e imprime o seu proprio pid, retornado pela chamada de
+sistema getpid().
 
-QUESTÃO 2) AQUI CONSTA O ENUNCIADO DA SEGUNDA QUESTÃO -----------------------------------------------------
-ARQUIVO.C
-#include <.......>
-.
-.
-. ----------------------------------------------------- AUXILIAR.TXT
-...........
-...........
-........... ----------------------------------------------------- COMPILAÇÃO E EXECUÇÃO
-$ gcc -o exercicio exercicio1.c
-$ ./exercicio ----------------------------------------------------- RESULTADO
-Resultado do print ......
-Resultado do print ......
-Resultado do print ......
-Resultado do print ...... ----------------------------------------------------- CONCLUSÃO
-Texto com no mínimo 1 parágrafo respondendo à questão e explicando o funcionamento do código feito.
+===============================================================================
+EXERCICIO 2
+===============================================================================
+
+ENUNCIADO:
+Agora, usando a mesma estrutura de processos pai e filho, declare uma
+variavel visivel ao pai e ao filho, no pai inicialize a variavel com 1 e
+imprima seu valor antes do fork(). No filho, altere o valor da variavel para
+5 e imprima o seu valor antes do exit(). Agora, no pai, imprima novamente o
+valor da variavel apos o filho ter alterado a variavel - apos a waitpid().
+Justifique os resultados obtidos.
+
+CODIGO FONTE (ex2.c):
+-------------------------------------------------------------------------------
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int variavel = 1;
+
+int main(void) {
+    pid_t pid;
+    int status;
+
+    printf("[ANTES DO FORK] pid = %d, variavel = %d\n", getpid(), variavel);
+
+    pid = fork();
+
+    if (pid != 0) {/*pai*/
+        waitpid(pid, &status, 0);
+
+        printf("[PAI]  depois do waitpid(), variavel = %d\n", variavel);
+    } else {/*filho*/
+
+        variavel = 5;
+        printf("[FILHO] variavel alterada para %d\n", variavel);
+
+        exit(0);
+    }
+
+    return 0;
+}
+-------------------------------------------------------------------------------
+
+LINHA DE COMANDO PARA COMPILACAO E EXECUCAO:
+    gcc -o ex2 ex2.c
+    ./ex2
+
+SAIDA GERADA:
+-------------------------------------------------------------------------------
+[ANTES DO FORK] pid = 521, variavel = 1
+[FILHO] variavel alterada para 5
+[ANTES DO FORK] pid = 521, variavel = 1
+[PAI]  depois do waitpid(), variavel = 1
+-------------------------------------------------------------------------------
+
+REFLEXAO:
+O resultado principal esperado e que o PAI continua enxergando variavel = 1
+mesmo depois do filho ter alterado a variavel para 5. Isso acontece porque
+o fork() cria um processo filho com uma COPIA COMPLETA do espaco de
+enderecamento do processo pai, incluindo a regiao de memoria onde a
+variavel global esta armazenada. A partir do fork(), pai e filho passam a
+ter copias independentes dessa variavel, cada uma em seu proprio espaco de
+memoria (fisicamente separado, mesmo que o endereco virtual seja o mesmo
+nos dois processos, gracas a MMU). Assim, quando o filho executa
+"variavel = 5", ele altera apenas a SUA copia; a copia do pai jamais e
+tocada, e por isso o pai imprime 1 mesmo depois do waitpid() ter garantido
+que o filho ja terminou.
+
+===============================================================================
+EXERCICIO 3
+===============================================================================
+
+ENUNCIADO:
+Use o programa anterior para ler e ordenar um vetor de 10 posicoes. O filho
+ordena o vetor e o pai exibe os dados do vetor antes do fork() e depois do
+waitpid(). Eles usarao o mesmo vetor na memoria? Justifique.
+
+CODIGO FONTE (ex3.c):
+-------------------------------------------------------------------------------
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define TAM 10
+
+int vetor[TAM] = {7, 2, 9, 4, 1, 5, 3, 8, 6, 0};
+
+void imprime_vetor(const char *rotulo) {
+    printf("%s: ", rotulo);
+    for (int i = 0; i < TAM; i++)
+        printf("%d ", vetor[i]);
+    printf("\n");
+}
+
+void ordena_vetor(void) {
+    int i, j, tmp;
+    for (i = 0; i < TAM - 1; i++) {
+        for (j = 0; j < TAM - 1 - i; j++) {
+            if (vetor[j] > vetor[j + 1]) {
+                tmp = vetor[j];
+                vetor[j] = vetor[j + 1];
+                vetor[j + 1] = tmp;
+            }
+        }
+    }
+}
+
+int main(void) {
+    pid_t pid;
+    int status;
+
+    imprime_vetor("[ANTES DO FORK]  vetor (desordenado)");
+
+    pid = fork();
+
+    if (pid != 0) {/*pai*/
+        waitpid(pid, &status, 0);
+
+        imprime_vetor("[PAI]  vetor (desordenado)");
+    } else {/*filho*/
+        ordena_vetor();
+        imprime_vetor("[FILHO]  vetor (ordenado)");
+
+        exit(0);
+    }
+
+    return 0;
+}
+-------------------------------------------------------------------------------
+
+LINHA DE COMANDO PARA COMPILACAO E EXECUCAO:
+    gcc -o ex3 ex3.c
+    ./ex3
+
+SAIDA GERADA:
+-------------------------------------------------------------------------------
+[ANTES DO FORK]  vetor (desordenado): 7 2 9 4 1 5 3 8 6 0
+[FILHO]  vetor (ordenado): 0 1 2 3 4 5 6 7 8 9
+[ANTES DO FORK]  vetor (desordenado): 7 2 9 4 1 5 3 8 6 0
+[PAI]  vetor (desordenado): 7 2 9 4 1 5 3 8 6 0
+-------------------------------------------------------------------------------
+
+RESPOSTA - Eles usarao o mesmo vetor na memoria?
+NAO. Pai e filho NAO compartilham o mesmo vetor na memoria apos o fork().
+
+REFLEXAO:
+Assim como no Exercicio 2, o fork() duplica todo o espaco de enderecamento
+do processo pai, incluindo o segmento de dados onde o vetor global esta
+armazenado. A partir do fork(), o vetor do filho e o vetor do pai passam a
+ser duas regioes de memoria distintas (mesmo endereco virtual, enderecos
+fisicos diferentes, traduzidos pela MMU de cada processo). Por isso, quando
+o filho executa ordena_vetor(), ele reorganiza apenas a SUA copia do vetor;
+a copia do pai permanece com os valores originais, na ordem desordenada -
+e e exatamente isso que se observa na saida: mesmo depois do waitpid()
+(ou seja, com certeza de que o filho ja terminou de ordenar), o pai ainda
+exibe o vetor na ordem original (7 2 9 4 1 5 3 8 6 0).
+
+===============================================================================
+EXERCICIO 4
+===============================================================================
+
+ENUNCIADO:
+Modifique o programa anterior para que o filho execute um programa
+elaborado por voce, que mande imprimir uma mensagem qualquer no video, por
+exemplo, "alo mundo". Em seguida altere o programa do item 4 para o filho
+executar o programa echo da shell.
+
+--------------------------------------------------------------------
+PARTE A - filho executa um programa proprio (alomundo.c) via execv()
+--------------------------------------------------------------------
+
+CODIGO FONTE (alomundo.c):
+-------------------------------------------------------------------------------
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main(void) {
+    printf("alo mundo (pid = %d)\n", getpid());
+    exit(0);
+}
+-------------------------------------------------------------------------------
+
+CODIGO FONTE (ex4.c):
+-------------------------------------------------------------------------------
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    pid_t pid;
+    int status;
+
+    printf("[PAI] antes do fork(), pid = %d\n", getpid());
+
+    pid = fork();
+
+    if (pid != 0) {/*pai*/
+        waitpid(pid, &status, 0);
+
+        if (!WIFEXITED(status))
+            printf("[PAI] o processo filho nao terminou corretamente!\n");
+
+        printf("[PAI] filho (pid %d) terminou. Encerrando o pai.\n", pid);
+    } else {/*filho*/
+        char *argv[] = {"./alomundo", NULL};
+
+        execv("./alomundo", argv);
+        perror("execv");
+        exit(1);
+    }
+
+    return 0;
+}
+-------------------------------------------------------------------------------
+
+LINHA DE COMANDO PARA COMPILACAO E EXECUCAO:
+    gcc -o alomundo alomundo.c
+    gcc -o ex4 ex4.c
+    ./ex4
+
+SAIDA GERADA:
+-------------------------------------------------------------------------------
+alo mundo (pid = 555)
+[PAI] antes do fork(), pid = 554
+[PAI] filho (pid 555) terminou. Encerrando o pai.
+-------------------------------------------------------------------------------
+
+--------------------------------------------------------------------
+PARTE B - filho executa o programa echo da shell via execlp()
+--------------------------------------------------------------------
+
+CODIGO FONTE (ex4b.c):
+-------------------------------------------------------------------------------
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    pid_t pid;
+    int status;
+
+    printf("[PAI] antes do fork(), pid = %d\n", getpid());
+
+    pid = fork();
+
+    if (pid != 0) {/*pai*/
+        waitpid(pid, &status, 0);
+
+        if (!WIFEXITED(status))
+            printf("[PAI] o processo filho nao terminou corretamente!\n");
+
+        printf("[PAI] filho (pid %d) terminou. Encerrando o pai.\n", pid);
+    } else {/*filho*/
+        execlp("echo", "echo", "alo mundo", (char *) NULL);
+
+        perror("execlp");
+        exit(1);
+    }
+
+    return 0;
+}
+-------------------------------------------------------------------------------
+
+LINHA DE COMANDO PARA COMPILACAO E EXECUCAO:
+    gcc -o ex4b ex4b.c
+    ./ex4b
+
+SAIDA GERADA:
+-------------------------------------------------------------------------------
+alo mundo
+[PAI] antes do fork(), pid = 556
+[PAI] filho (pid 557) terminou. Encerrando o pai.
+-------------------------------------------------------------------------------
+
+REFLEXAO (partes A e B):
+Nas duas versoes, o codigo do filho nunca retorna do execv()/execlp() em
+caso de sucesso: essas chamadas SUBSTITUEM completamente a imagem do
+processo filho (codigo, dados, pilha e ate o buffer de I/O da biblioteca
+stdio) pelo novo programa - alomundo na parte A, e o binario echo do
+sistema na parte B. O PID do processo continua o mesmo, mas a partir dali
+o processo "e" o novo programa; por isso a linha perror() so seria
+executada em caso de falha do exec.

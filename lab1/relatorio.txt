@@ -1,0 +1,72 @@
+1. Número da Questão;
+2. Texto do Enunciado;
+3. Código com a solução realizada (de todos os .c elaborados na questão);
+4. Conteúdo de arquivos de texto utilizados;
+5. Comando utilizado para compilação e execução da questão;
+6. Resultado impresso na tela;
+7. Conclusão respondendo à pergunta feita na questão. Caso não haja pergunta, deve ser explicado o
+código relacionando-o com os conteúdos aprendidos no laboratório.
+
+Nome: Charbel Janos Freitas
+Matricula: 2510373
+
+[Exercicio 1]
+Enunciado: Faça um programa para criar dois processos, o pai escreve seu pid e espera o filho terminar e o filho escreve o seu pid e termina.
+
+Codigo:
+ex1.c:
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    pid_t pid, meu_pid;
+    int status;
+
+    pid = fork();
+
+    if (pid != 0) { /*pai*/
+        meu_pid = getpid();
+        printf("[PAI]  meu pid = %d\n", meu_pid);
+
+        waitpid(pid, &status, 0);
+
+        printf("[PAI] FIM\n");
+    } else { /*filho*/
+        meu_pid = getpid();
+        printf("[FILHO] meu pid = %d\n", meu_pid);
+
+        exit(0);
+    }
+
+    return 0;
+}
+
+Comando utilizado para compilação e execução da questão:
+gcc -o exercicio1 exercicio1.c
+./exercicio1
+
+Resultado impresso na tela:
+[PAI]  meu pid = 19476
+[FILHO] meu pid = 19477
+[PAI] FIM
+
+
+QUESTÃO 2) AQUI CONSTA O ENUNCIADO DA SEGUNDA QUESTÃO -----------------------------------------------------
+ARQUIVO.C
+#include <.......>
+.
+.
+. ----------------------------------------------------- AUXILIAR.TXT
+...........
+...........
+........... ----------------------------------------------------- COMPILAÇÃO E EXECUÇÃO
+$ gcc -o exercicio exercicio1.c
+$ ./exercicio ----------------------------------------------------- RESULTADO
+Resultado do print ......
+Resultado do print ......
+Resultado do print ......
+Resultado do print ...... ----------------------------------------------------- CONCLUSÃO
+Texto com no mínimo 1 parágrafo respondendo à questão e explicando o funcionamento do código feito.
